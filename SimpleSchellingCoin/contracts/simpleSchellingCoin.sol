@@ -4,6 +4,10 @@ import "./SimpleCommit.sol";
 
 contract simpleSchellingCoin {
     using SimpleCommit for SimpleCommit.CommitType;
+
+    // constantes que representam voto sim ou voto nao
+    byte sim = byte(0x01);
+    byte nao = byte(0x00);
     
     // cada participante tem um commit do seu voto
     mapping(address => SimpleCommit.CommitType) public commits;
@@ -19,10 +23,13 @@ contract simpleSchellingCoin {
     // endereços dos participantes cadastrados
     mapping(address => bool) public enderecos;
 
-    // participante ja comitou voto
+    // verifica se participante fez commit do voto
     mapping(address => bool) public commited;
 
-    enum StatesType {aguardaParticipantes,aguardaVotos,aguardaRevelacao, fim}
+    // verifica se participante revelou voto
+    mapping(address => bool) public revealed;
+
+    enum StatesType {aguardaParticipantes,aguardaVotos,aguardaRevelacao,pagaVencedores}
     StatesType state;
     
     // def do valor de P, deposito para pagar os participantes
@@ -73,17 +80,29 @@ contract simpleSchellingCoin {
 
         if (qtd_atual == qtd_participantes){
             state = StatesType.aguardaRevelacao;
-            //qtd_atual = 0;
+            qtd_atual = 0;
         }
     }
 
-    function revelaVoto() public {
+    function revelaVoto(bytes32 nonce, byte value) public {
         require (state == StatesType.aguardaRevelacao);
         require (enderecos[msg.sender], "Participante nao cadastrado!");
 
+        // participante revela voto apenas uma vez
+        require (revealed[msg.sender] == false, "Participante ja revelou voto!");
+        revealed[msg.sender] = true;
+
+        // revela o voto
+        commits[msg.sender].reveal(nonce,value);
+
+        qtd_atual += 1;
+
+        if (qtd_atual == qtd_participantes){
+            state = StatesType.pagaVencedores;
+            qtd_atual = 0;
+        }
     }
 
-    // revelar os votos
     // pagar os vencedores
     // lucro(?)
     // funcao view para saber o resultado
