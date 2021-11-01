@@ -9,22 +9,21 @@ library SimpleCommit {
     byte value;
     bool verified;
     CommitStatesType myState;
-
   }
 
   function commit(CommitType storage c,bytes32 h) public {
-        c.commited = h;
-        c.verified = false;
-        c.myState = CommitStatesType.Waiting;
+    c.commited = h;
+    c.verified = false;
+    c.myState = CommitStatesType.Waiting;
   }
 
   function reveal(CommitType storage c, bytes32 nonce, byte v) public {
     require (c.myState == CommitStatesType.Waiting);
     bytes32 ver = sha256(abi.encodePacked(nonce,v));
     c.myState = CommitStatesType.Revealed;
-    if (ver==c.commited) {
+    if (ver == c.commited) {
       c.verified = true;
-      c.value =v;
+      c.value = v;
     }
   }
 
@@ -35,7 +34,7 @@ library SimpleCommit {
 
   function getValue(CommitType storage c) public returns(byte) {
     require (c.myState == CommitStatesType.Revealed);
-    require (c.verified==true);
+    require (c.verified == true);
     return c.value;
   }
 
