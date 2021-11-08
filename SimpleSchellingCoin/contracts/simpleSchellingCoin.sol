@@ -19,10 +19,12 @@ contract simpleSchellingCoin {
     address payable dono;
     
     // deposito para pagar os participantes
-    uint deposito;
+    uint public deposito;
 
     uint qtd_participantes;
     uint qtd_atual; // controla qtd atual de participantes, votos e revelações
+
+    string voto_vencedor;
 
     // endereços dos participantes cadastrados
     mapping(address => bool) public enderecos;
@@ -33,21 +35,20 @@ contract simpleSchellingCoin {
     // controla se participante revelou voto
     mapping(address => bool) public revealed;
 
-    enum StatesType {aguardaParticipantes,aguardaVotos,aguardaRevelacao,pagaVencedores}
+    enum StatesType {aguardaParticipantes,aguardaVotos,aguardaRevelacao,pagaVencedores,fim}
     StatesType state;
     
     // def do valor de P, deposito para pagar os participantes
     uint P;
     
-    constructor () public payable {
+    constructor (uint quantidade) public payable {
         P = 1 ether;
-        qtd_participantes = 3;
-        qtd_atual = 0;
+        qtd_participantes = quantidade;
         deposito = qtd_participantes * P;
         
-        // pensar se precisa do limite do bloco
-        //limiteBloco = block.number + 10;
+        require(msg.value >= deposito, "Deposito tem valor minimo");
         
+        qtd_atual = 0;
         dono = msg.sender;
         state = StatesType.aguardaParticipantes;
     }
@@ -117,7 +118,6 @@ contract simpleSchellingCoin {
 
         if (qtd_atual == qtd_participantes){
             state = StatesType.pagaVencedores;
-            //qtd_atual = 0;
         }
     }
 
@@ -131,6 +131,7 @@ contract simpleSchellingCoin {
 
         // voto "sim" venceu ou deu empate
         if(qtd_sim >= qtd_nao){
+            voto_vencedor = "SIM";
             for(uint i=0; i<qtd_sim; i++){
                 vencedor = sim_participantes[i];
                 vencedor.transfer(P);
@@ -138,14 +139,34 @@ contract simpleSchellingCoin {
         }
         // voto "não" venceu
         else {
+            voto_vencedor = "NAO";
             for(uint i=0; i<qtd_nao; i++){
                 vencedor = nao_participantes[i];
                 vencedor.transfer(P);
             }  
         }
+
+        // dinheiro que ficou no contrato volta pro dono
+        dono.transfer(address(this).balance);
+        
+        state = StatesType.fim;
     }
 
-    // pagar os vencedores
-    // lucro(?)
-    // funcao view para saber o resultado
+    function getVotoVencedor() public view returns(string memory){
+        require (state == StatesType.fim);
+        return voto_vencedor;
+    }
+
+    // retorna enderecos dos participantes que votaram "sim"
+    function getSimParticipantes() public view returns(address payable[] memory){
+        require (state == StatesType.fim);
+        return sim_participantes;
+    }
+
+    // retorna enderecos dos participantes que votaram "nao"
+    function getNaoParticipantes() public view returns(address payable[] memory){
+        require (state == StatesType.fim);
+        return nao_participantes;
+    }
+
 }
